@@ -1,0 +1,46 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Player {
+  id        String        @id @default(uuid())
+  name      String        @unique
+  createdAt DateTime      @default(now())
+  games     GamePlayer[]
+}
+
+model Game {
+  id             String        @id @default(uuid())
+  playedOn       DateTime      
+  totalBuyIn     Decimal       @default(0)
+  totalCashOut   Decimal       @default(0)
+  imbalance      Decimal       @default(0)
+  status         GameStatus    @default(OPEN)
+  createdAt      DateTime      @default(now())
+  players        GamePlayer[]
+}
+
+model GamePlayer {
+  id              String   @id @default(uuid())
+  game            Game     @relation(fields: [gameId], references: [id])
+  gameId          String
+  player          Player   @relation(fields: [playerId], references: [id])
+  playerId        String
+
+  buyIn           Decimal  @default(0)
+  cashOut         Decimal  @default(0)
+  rawResult       Decimal  @default(0)
+  adjustedResult  Decimal  @default(0)
+
+  @@unique([gameId, playerId])
+}
+
+enum GameStatus {
+  OPEN
+  CLOSED
+}
