@@ -2,6 +2,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import { playersRoutes } from './routes/players';
 import { gamesRoutes } from './routes/games';
+import { leaderboardRoutes } from './routes/leaderboard';
 
 const app = Fastify({ logger: true });
 
@@ -10,6 +11,7 @@ app.get('/health', async () => ({ status: 'ok' }));
 // Register route “groups”
 app.register(playersRoutes, { prefix: '/players' });
 app.register(gamesRoutes,   { prefix: '/games' });
+app.register(leaderboardRoutes,   { prefix: '/leaderboard' });
 
 const start = async () => {
   try {
