@@ -5,37 +5,40 @@ import {
   Typography,
   Box,
   CircularProgress,
-  AppBar,
-  Tabs,
-  Tab,
-  Toolbar,
 } from '@mui/material';
 
 import Leaderboard from './components/Leaderboard';
 import RecentGames from './components/RecentGames';
-import type { Game, LeaderboardEntry } from './types';
-
-type View = 'leaderboard' | 'games';
+import GameDetailsDialog from './components/GameDetailsDialog';
+import AddGameDialog from './components/AddGameDialog';
+import type { Game, LeaderboardEntry, Player, GamePlayerInput } from './types';
 
 function App() {
   const [games, setGames] = useState<Game[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
+
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<View>('leaderboard');
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [addGameOpen, setAddGameOpen] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [lbRes, gamesRes] = await Promise.all([
+        const [lbRes, gamesRes, playersRes] = await Promise.all([
           fetch('http://localhost:3000/leaderboard'),
           fetch('http://localhost:3000/games'),
+          fetch('http://localhost:3000/players'),
         ]);
 
-        const lbData = (await lbRes.json()) as LeaderboardEntry[];
-        const gamesData = (await gamesRes.json()) as Game[];
+        const lbData = await lbRes.json();
+        const gamesData = await gamesRes.json();
+        const playersData = await playersRes.json();
 
         setLeaderboard(lbData);
         setGames(gamesData);
+        setPlayers(playersData);
       } catch (err) {
         console.error('Failed to load data', err);
       } finally {
@@ -46,50 +49,69 @@ function App() {
     fetchData();
   }, []);
 
+  const handleGameClick = (game: Game) => {
+    setSelectedGame(game);
+    setDetailsOpen(true);
+  };
+
+  const handleAddGameSave = async (payload: {
+    playedOn: string;
+    players: GamePlayerInput[];
+    baseBuyIn: number;
+  }) => {
+    try {
+      const res = await fetch('http://localhost:3000/games', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error('Failed to create game');
+
+      const newGame: Game = await res.json();
+      setGames((prev) => [newGame, ...prev]);
+    } catch (err) {
+      console.error(err);
+      // TODO: show toast/snackbar
+    }
+  };
+
   if (loading) {
     return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+      <Container sx={{ py: 4, textAlign: 'center' }}>
         <CircularProgress />
-      </Box>
+      </Container>
     );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Top Nav */}
-      <AppBar position="static" color="transparent" elevation={0}>
-        <Toolbar sx={{ px: 2 }}>
-          <Typography
-            variant="h5"
-            sx={{ flexGrow: 1, fontWeight: 700, letterSpacing: 0.5 }}
-          >
-            Poker Dashboard
-          </Typography>
-          <Tabs
-            value={view}
-            onChange={(_, val) => setView(val)}
-            textColor="inherit"
-            indicatorColor="secondary"
-          >
-            <Tab value="leaderboard" label="Leaderboard" />
-            <Tab value="games" label="Recent Games" />
-          </Tabs>
-        </Toolbar>
-      </AppBar>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Typography variant="h4" fontWeight={700} gutterBottom>
+        Poker Night Tracker
+      </Typography>
 
-      {/* Main content */}
-      <Container maxWidth="md" sx={{ py: 3 }}>
-        {view === 'leaderboard' && <Leaderboard leaderboard={leaderboard} />}
-        {view === 'games' && <RecentGames games={games} />}
-      </Container>
-    </Box>
+      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { md: '1fr 1fr' } }}>
+        <Leaderboard leaderboard={leaderboard} />
+        <RecentGames
+          games={games}
+          onGameClick={handleGameClick}
+          onAddGame={() => setAddGameOpen(true)}
+        />
+      </Box>
+
+      <GameDetailsDialog
+        open={detailsOpen}
+        game={selectedGame}
+        onClose={() => setDetailsOpen(false)}
+      />
+
+      <AddGameDialog
+        open={addGameOpen}
+        onClose={() => setAddGameOpen(false)}
+        onSave={handleAddGameSave}
+        players={players}
+      />
+    </Container>
   );
 }
 
