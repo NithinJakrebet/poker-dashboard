@@ -1,116 +1,51 @@
 // src/App.tsx
-import { useEffect, useState } from 'react';
-import {
-  Container,
-  Typography,
-  Box,
-  CircularProgress,
-} from '@mui/material';
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { Container, Box, CircularProgress } from "@mui/material";
+import Leaderboard from "./components/Leaderboard/Leaderboard";
+import PastGames from "./components/Games/PastGames";
 
-import Leaderboard from './components/Leaderboard';
-import RecentGames from './components/RecentGames';
-import GameDetailsDialog from './components/GameDetailsDialog';
-import AddGameDialog from './components/AddGameDialog';
-import type { Game, LeaderboardEntry, Player, GamePlayerInput } from './types';
+import type { LeaderboardEntry, Game } from "./types";
+
+const API_URL = import.meta.env.VITE_API_URL as string;
 
 function App() {
+  const [lb, setLb] = useState<LeaderboardEntry[]>([]);
   const [games, setGames] = useState<Game[]>([]);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [players, setPlayers] = useState<Player[]>([]);
-
   const [loading, setLoading] = useState(true);
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [addGameOpen, setAddGameOpen] = useState(false);
 
   useEffect(() => {
-    async function fetchData() {
+    async function getData() {
       try {
-        const [lbRes, gamesRes, playersRes] = await Promise.all([
-          fetch('http://localhost:3000/leaderboard'),
-          fetch('http://localhost:3000/games'),
-          fetch('http://localhost:3000/players'),
-        ]);
+        const lbResponse = await axios.get<LeaderboardEntry[]>(
+          `${API_URL}/leaderboard`
+        );
+        setLb(lbResponse.data);
 
-        const lbData = await lbRes.json();
-        const gamesData = await gamesRes.json();
-        const playersData = await playersRes.json();
-
-        setLeaderboard(lbData);
-        setGames(gamesData);
-        setPlayers(playersData);
+        const gamesResponse = await axios.get<Game[]>(`${API_URL}/games`);
+        setGames(gamesResponse.data);
       } catch (err) {
-        console.error('Failed to load data', err);
+        console.error("Failed to fetch", err);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchData();
+    getData();
   }, []);
 
-  const handleGameClick = (game: Game) => {
-    setSelectedGame(game);
-    setDetailsOpen(true);
-  };
-
-  const handleAddGameSave = async (payload: {
-    playedOn: string;
-    players: GamePlayerInput[];
-    baseBuyIn: number;
-  }) => {
-    try {
-      const res = await fetch('http://localhost:3000/games', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error('Failed to create game');
-
-      const newGame: Game = await res.json();
-      setGames((prev) => [newGame, ...prev]);
-    } catch (err) {
-      console.error(err);
-      // TODO: show toast/snackbar
-    }
-  };
-
-  if (loading) {
-    return (
-      <Container sx={{ py: 4, textAlign: 'center' }}>
-        <CircularProgress />
-      </Container>
-    );
-  }
-
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        Poker Night Tracker
-      </Typography>
-
-      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { md: '1fr 1fr' } }}>
-        <Leaderboard leaderboard={leaderboard} />
-        <RecentGames
-          games={games}
-          onGameClick={handleGameClick}
-          onAddGame={() => setAddGameOpen(true)}
-        />
-      </Box>
-
-      <GameDetailsDialog
-        open={detailsOpen}
-        game={selectedGame}
-        onClose={() => setDetailsOpen(false)}
-      />
-
-      <AddGameDialog
-        open={addGameOpen}
-        onClose={() => setAddGameOpen(false)}
-        onSave={handleAddGameSave}
-        players={players}
-      />
+    <Container sx={{ py: 4 }}>
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <Leaderboard lb={lb} />
+          <PastGames games={games} />
+        </Box>
+      )}
     </Container>
   );
 }

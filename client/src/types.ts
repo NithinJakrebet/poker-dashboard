@@ -1,32 +1,5 @@
 // src/types.ts
 
-export type LeaderboardEntry = {
-  playerId: string;
-  name: string;
-  totalProfit: number;
-};
-
-// src/types.ts
-export interface Player {
-  id: string;
-  name: string;
-}
-
-export interface GamePlayer {
-  playerId: string;
-  playerName: string;
-  buyIn: number;
-  cashOut: number;
-  result: number;
-}
-
-export interface GamePlayerInput {
-  playerId: string;
-  playerName: string;
-  buyIn: number;
-  cashOut: number;
-}
-
 export interface Game {
   id: string;
   playedOn: string;
@@ -34,5 +7,30 @@ export interface Game {
   totalCashOut: number;
   imbalance: number;
   status: string;
-  players?: GamePlayer[];
+  players: GamePlayer[];
+}
+
+export interface GamePlayer {
+  id: string;
+  gameId: string;
+  playerId: string;
+  buyIn: number;
+  cashOut: number;
+  rawResult: number;
+  adjustedResult: number;
+  game?: {
+    id: string;
+    playedOn: string;
+  }; // optional here, since /games doesn't need to send it
+  player: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface LeaderboardEntry {
+  playerId: string;
+  name: string;
+  totalProfit: number;
+  games: GamePlayer[];
 }

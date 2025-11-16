@@ -6,8 +6,7 @@ export async function leaderboardRoutes(
   app: FastifyInstance,
   _opts: FastifyPluginOptions
 ) {
-      
-// GET /leaderboard
+  // GET /leaderboard (assuming this is registered under '/leaderboard')
   app.get('/', async () => {
     const players = await prisma.player.findMany({
       select: {
@@ -15,7 +14,19 @@ export async function leaderboardRoutes(
         name: true,
         games: {
           select: {
+            id: true,
+            gameId: true,
+            playerId: true,
+            buyIn: true,
+            cashOut: true,
+            rawResult: true,
             adjustedResult: true,
+            game: {
+              select: {
+                id: true,
+                playedOn: true,
+              },
+            },
           },
         },
       },
@@ -31,6 +42,19 @@ export async function leaderboardRoutes(
           playerId: p.id,
           name: p.name,
           totalProfit,
+          games: p.games.map((gp) => ({
+            id: gp.id,
+            gameId: gp.gameId,
+            playerId: gp.playerId,
+            buyIn: Number(gp.buyIn),
+            cashOut: Number(gp.cashOut),
+            rawResult: Number(gp.rawResult),
+            adjustedResult: Number(gp.adjustedResult),
+            game: {
+              id: gp.game.id,
+              playedOn: gp.game.playedOn.toISOString(),
+            },
+          })),
         };
       })
       .sort((a, b) => b.totalProfit - a.totalProfit);

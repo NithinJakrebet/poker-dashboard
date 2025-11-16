@@ -24,10 +24,61 @@ export async function gamesRoutes(
   });
 
   // GET /games
-  app.get('/', async () => {
-    return prisma.game.findMany({ orderBy: { playedOn: 'desc' } });
+app.get("/", async () => {
+    const games = await prisma.game.findMany({
+      orderBy: { playedOn: "desc" },
+      select: {
+        id: true,
+        playedOn: true,
+        totalBuyIn: true,
+        totalCashOut: true,
+        imbalance: true,
+        status: true,
+        players: {
+          select: {
+            id: true,
+            gameId: true,
+            playerId: true,
+            buyIn: true,
+            cashOut: true,
+            rawResult: true,
+            adjustedResult: true,
+            player: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // shape & normalize numbers / dates for the frontend
+    return games.map((g) => ({
+      id: g.id,
+      playedOn: g.playedOn.toISOString(),
+      totalBuyIn: Number(g.totalBuyIn),
+      totalCashOut: Number(g.totalCashOut),
+      imbalance: Number(g.imbalance),
+      status: g.status,
+      players: g.players.map((gp) => ({
+        id: gp.id,
+        gameId: gp.gameId,
+        playerId: gp.playerId,
+        buyIn: Number(gp.buyIn),
+        cashOut: Number(gp.cashOut),
+        rawResult: Number(gp.rawResult),
+        adjustedResult: Number(gp.adjustedResult),
+        player: {
+          id: gp.player.id,
+          name: gp.player.name,
+        },
+      })),
+    }));
   });
 
+  
   // GET /games/:id
   app.get<{
     Params: { id: string };
